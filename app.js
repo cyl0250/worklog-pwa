@@ -533,16 +533,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   $("btnSiteManage").onclick = async () => {
-    // dialog 지원하면 기존 팝업 사용
-    if (dlg && typeof dlg.showModal === "function") {
-      dlg.showModal();
-      return;
-    }
-    // dialog 미지원이면 prompt로 대체
+    // PWA(홈화면 앱)에서는 dialog/showModal이 기기별로 실패하는 경우가 있어 prompt 방식으로 통일
     const name = prompt("추가할 현장명(가칭)을 입력하세요");
     if (name) await addSiteName(name);
   };
-
   $("btnCloseSites").onclick = () => {
     if (dlg && typeof dlg.close === "function") dlg.close();
   };
