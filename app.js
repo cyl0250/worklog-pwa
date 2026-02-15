@@ -1,5 +1,5 @@
 // === 설정: 본인 Apps Script Web App URL + token ===
-const GAS_URL = "https://script.google.com/macros/s/AKfycbx_WvW6QAiGBajEcIMyLNV6BzMd-IwGArlnmdRryXfhnmG0D7r4cwBzxQZw6wZJtJvv/exec"; // 예: https://script.google.com/macros/s/....../exec
+const GAS_URL = "PASTE_YOUR_WEB_APP_URL_HERE"; // 예: https://script.google.com/macros/s/....../exec
 const TOKEN  = "worklog2026"; // Apps Script의 API_TOKEN과 동일하게
 
 const $ = (id) => document.getElementById(id);
