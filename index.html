@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>작업일지</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    .row { display:flex; gap:8px; align-items:center; margin:10px 0; }
+    .stack { display:flex; flex-direction:column; gap:8px; width:100%; }
+    input, select, textarea { width:100%; padding:12px; font-size:16px; box-sizing:border-box; }
+    textarea { min-height: 90px; }
+    button { padding:12px 14px; font-size:16px; white-space:nowrap; }
+    .muted { color:#666; font-size:13px; }
+    .chip { display:flex; align-items:center; gap:6px; font-size:14px; white-space:nowrap; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin:10px 0; }
+    details { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>작업일지</h2>
+
+  <div class="row">
+    <input id="date" type="date" />
+    <button id="btnSave">저장</button>
+  </div>
+
+  <div class="row">
+    <select id="site"></select>
+    <button id="btnSiteManage">현장관리</button>
+  </div>
+
+  <div class="row">
+    <button id="btnDailyText" style="flex:1;">출력일보 문자보내기</button>
+    <button id="btnCopyDaily" style="flex:1;">복사</button>
+  </div>
+
+  <!-- 팀장 -->
+  <div class="row">
+    <div class="chip">
+      <input id="useLeader" type="checkbox" checked />
+      <label for="useLeader">전날값 사용</label>
+    </div>
+    <button id="addLeader">+ 추가</button>
+    <button data-mic="leader">🎙️</button>
+  </div>
+  <div id="leaderBox" class="stack">
+    <input class="leader" placeholder="팀장 (한 칸 = 한 팀)" />
+  </div>
+
+  <!-- 작업자 -->
+  <div class="row">
+    <div class="chip">
+      <input id="useWorkers" type="checkbox" checked />
+      <label for="useWorkers">전날값 사용</label>
+    </div>
+    <button id="addWorker">+ 추가</button>
+    <button data-mic="workers">🎙️</button>
+  </div>
+  <div id="workersBox" class="stack">
+    <input class="worker" placeholder="작업자 (한 칸 = 한 팀: 예) 김철수,박영희 또는 ?명)" />
+  </div>
+
+  <!-- 작업내용 -->
+  <div class="row">
+    <div class="chip">
+      <input id="useWork" type="checkbox" checked />
+      <label for="useWork">전날값 사용</label>
+    </div>
+    <button id="addWork">+ 추가</button>
+    <button data-mic="work">🎙️</button>
+  </div>
+  <div id="workBox" class="stack">
+    <textarea class="work" placeholder="작업내용 (한 칸=한 덩어리, +추가 가능)"></textarea>
+  </div>
+
+  <div class="row">
+    <button id="btnPrefill">전날값 다시 적용</button>
+  </div>
+
+  <hr/>
+
+  <h3>검색</h3>
+  <div class="row">
+    <input id="keyword" placeholder="키워드 (비우면 전체)" />
+    <button id="btnSearch">검색</button>
+  </div>
+
+  <details>
+    <summary class="muted">필터(현장/기간)</summary>
+    <div class="row">
+      <select id="searchSite">
+        <option value="">(전체 현장)</option>
+      </select>
+    </div>
+    <div class="row">
+      <input id="from" type="date" />
+      <input id="to" type="date" />
+    </div>
+    <div class="muted">※ 기간을 비우면 전체 기간 검색</div>
+  </details>
+
+  <div id="results"></div>
+
+  <!-- 현장관리 -->
+  <dialog id="dlgSites">
+    <div style="min-width:280px; padding:10px;">
+      <h3>현장관리</h3>
+      <div class="row">
+        <input id="newSite" placeholder="현장명 추가" />
+        <button id="btnAddSite">추가</button>
+      </div>
+      <div class="muted">※ Active=YES인 현장만 드롭다운에 표시됩니다.</div>
+      <div class="row" style="justify-content:flex-end;">
+        <button id="btnCloseSites">닫기</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 큰 버튼 확인 팝업 -->
+  <dialog id="confirmDlg">
+    <div style="padding:16px; min-width:280px; max-width:520px;">
+      <h3 id="confirmTitle" style="margin:0 0 10px 0;">확인</h3>
+      <div id="confirmMsg" style="white-space:pre-wrap; line-height:1.4;"></div>
+
+      <div style="display:flex; gap:10px; margin-top:14px;">
+        <button id="confirmYes" style="flex:1; padding:14px; font-size:18px; border-radius:12px;">덮어쓰기</button>
+        <button id="confirmNo" style="flex:1; padding:14px; font-size:18px; border-radius:12px;">취소</button>
+      </div>
+
+      <div class="muted" style="margin-top:10px;">
+        ※ 덮어쓰기를 누르면 전날값/불러오기 값이 현재 입력을 대체합니다.
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 출력일보 팝업 -->
+  <dialog id="dailyDlg">
+    <div style="padding:16px; min-width:280px; max-width:520px;">
+      <h3 style="margin:0 0 10px 0;">오늘 출력일보(복사해서 문자/카톡)</h3>
+
+      <textarea id="dailyText" style="width:100%; min-height:220px; padding:12px; font-size:16px;"></textarea>
+
+      <div style="display:flex; gap:10px; margin-top:14px;">
+        <button id="dailyCopy" style="flex:1; padding:14px; font-size:18px; border-radius:12px;">복사</button>
+        <button id="dailyShare" style="flex:1; padding:14px; font-size:18px; border-radius:12px;">공유</button>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <button id="dailyClose" style="flex:1; padding:14px; font-size:18px; border-radius:12px;">닫기</button>
+      </div>
+
+      <div class="muted" style="margin-top:10px;">
+        ※ “공유”를 누르면 문자앱/카톡을 선택할 수 있습니다(기기 지원 시).
+      </div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
