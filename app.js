@@ -520,18 +520,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.onclick = () => startSpeechTo(btn.dataset.mic);
   });
 
-  // sites manage
+  // sites manage (dialog 미지원 기기 대비)
   const dlg = $("dlgSites");
-  $("btnSiteManage").onclick = () => dlg.showModal();
-  $("btnCloseSites").onclick = () => dlg.close();
-  $("btnAddSite").onclick = async () => {
-    const name = $("newSite").value.trim();
-    if (!name) return;
-    const data = await apiPost("site_add", { siteName: name });
+
+  async function addSiteName(name) {
+    const siteName = (name || "").trim();
+    if (!siteName) return;
+    const data = await apiPost("site_add", { siteName });
     if (!data.ok) return alert(data.error || "site_add_error");
-    $("newSite").value = "";
     await loadSites();
     alert("현장 추가 완료");
+  }
+
+  $("btnSiteManage").onclick = async () => {
+    // dialog 지원하면 기존 팝업 사용
+    if (dlg && typeof dlg.showModal === "function") {
+      dlg.showModal();
+      return;
+    }
+    // dialog 미지원이면 prompt로 대체
+    const name = prompt("추가할 현장명(가칭)을 입력하세요");
+    if (name) await addSiteName(name);
+  };
+
+  $("btnCloseSites").onclick = () => {
+    if (dlg && typeof dlg.close === "function") dlg.close();
+  };
+
+  $("btnAddSite").onclick = async () => {
+    const name = $("newSite").value.trim();
+    $("newSite").value = "";
+    await addSiteName(name);
   };
 
   // daily text
