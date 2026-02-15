@@ -14,19 +14,15 @@ function todayStr() { return fmt(new Date()); }
 function yesterdayStr() { const d=new Date(); d.setDate(d.getDate()-1); return fmt(d); }
 
 async function apiGet(action, params = {}) {
-  const url = new URL(GAS_URL);
-  url.searchParams.set("action", action);
-  url.searchParams.set("token", TOKEN);
-  Object.entries(params).forEach(([k,v]) => {
-    if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v);
-  });
-  const res = await fetch(url.toString());
+  const built = _buildUrl(action, params);
+  if (!built.ok) return { ok:false, error: built.error };
+  const res = await fetch(built.url.toString());
   return res.json();
 }
 async function apiPost(action, body = {}) {
-  const url = new URL(GAS_URL);
-  url.searchParams.set("action", action);
-  url.searchParams.set("token", TOKEN);
+  const built = _buildUrl(action, {});
+  if (!built.ok) return { ok:false, error: built.error };
+  const url = built.url;
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: {"Content-Type":"application/json"},
@@ -480,34 +476,7 @@ async function openDailyDialog() {
 document.addEventListener("DOMContentLoaded", async () => {
   $("date").value = todayStr();
 
-  await loadSites();
-  await applyYesterdayPrefillForSelectedSite();
-
-  // site change confirm + prefill
-  let prevSite = $("site").value;
-  $("site").addEventListener("focus", () => { prevSite = $("site").value; });
-  $("site").addEventListener("change", async () => {
-    await confirmAndApplyPrefillBig(
-      "현장을 변경하면 입력 중인 내용이 덮어써질 수 있습니다.",
-      () => { $("site").value = prevSite; }
-    );
-    localStorage.setItem("lastSite", $("site").value);
-  });
-
-  // checkbox confirm
-  ["useLeader","useWorkers","useWork"].forEach(id => {
-    $(id).addEventListener("change", async () => {
-      const ok = await showBigConfirm({
-        title: "전날값 설정 변경",
-        message: "설정을 바꾸면 입력이 덮어써질 수 있습니다.\n전날값으로 다시 적용할까요?",
-        yesText: "적용",
-        noText: "취소"
-      });
-      if (!ok) { $(id).checked = !$(id).checked; return; }
-      await applyYesterdayPrefillForSelectedSite();
-    });
-  });
-
+  // 먼저 버튼 이벤트를 연결(초기 API 실패해도 버튼이 죽지 않게)
   $("btnSave").onclick = save;
   $("btnSearch").onclick = searchAll;
   $("btnPrefill").onclick = () => applyYesterdayPrefillForSelectedSite();
@@ -520,9 +489,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.onclick = () => startSpeechTo(btn.dataset.mic);
   });
 
-  // sites manage (dialog 미지원 기기 대비)
+  // sites manage (prompt only)
   const dlg = $("dlgSites");
-
   async function addSiteName(name) {
     const siteName = (name || "").trim();
     if (!siteName) return;
@@ -531,16 +499,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadSites();
     alert("현장 추가 완료");
   }
-
   $("btnSiteManage").onclick = async () => {
-    // PWA(홈화면 앱)에서는 dialog/showModal이 기기별로 실패하는 경우가 있어 prompt 방식으로 통일
     const name = prompt("추가할 현장명(가칭)을 입력하세요");
     if (name) await addSiteName(name);
   };
   $("btnCloseSites").onclick = () => {
     if (dlg && typeof dlg.close === "function") dlg.close();
   };
-
   $("btnAddSite").onclick = async () => {
     const name = $("newSite").value.trim();
     $("newSite").value = "";
@@ -575,4 +540,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
   $("dailyClose").onclick = () => $("dailyDlg").close();
+
+  // 초기 데이터 로딩(실패해도 앱은 살아있게)
+  try {
+    await loadSites();
+    await applyYesterdayPrefillForSelectedSite();
+
+    // site change confirm + prefill
+    let prevSite = $("site").value;
+    $("site").addEventListener("focus", () => { prevSite = $("site").value; });
+    $("site").addEventListener("change", async () => {
+      await confirmAndApplyPrefillBig(
+        "현장을 변경하면 입력 중인 내용이 덮어써질 수 있습니다.",
+        () => { $("site").value = prevSite; }
+      );
+      localStorage.setItem("lastSite", $("site").value);
+    });
+
+    // checkbox confirm
+    ["useLeader","useWorkers","useWork"].forEach(id => {
+      $(id).addEventListener("change", async () => {
+        const ok = await showBigConfirm({
+          title: "전날값 설정 변경",
+          message: "설정을 바꾸면 입력이 덮어써질 수 있습니다.
+전날값으로 다시 적용할까요?",
+          yesText: "적용",
+          noText: "취소"
+        });
+        if (!ok) { $(id).checked = !$(id).checked; return; }
+        await applyYesterdayPrefillForSelectedSite();
+      });
+    });
+
+  } catch (e) {
+    alert("초기화 실패: " + (e && e.message ? e.message : e));
+  }
 });
